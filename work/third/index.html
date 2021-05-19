@@ -33,8 +33,8 @@
       $(function() {
         $(".nav").find("li").click(function() {
           var navIndex = $(this).index();
-          $(".contents").find("li").addClass("is-hidden");
-          $(".contents").find("li").eq(navIndex).removeClass("is-hidden");
+          $(".contents").find("li").addClass("is-hidden")
+                                   .eq(navIndex).removeClass("is-hidden");
         })
       })
     </script>
