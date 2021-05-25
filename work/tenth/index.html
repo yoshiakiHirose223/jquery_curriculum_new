@@ -88,31 +88,6 @@
       //   </div>
       // </div>
       $(function() {
-        class Lists {
-          add(data) {
-            var lists = '';
-            $(data.Items).each(function(i, book) {
-              console.log(data.Items);
-              var item = book.Item
-              var li = '<li class="lists__item">'+
-                          '<div class="lists__item__inner">'+
-                            '<a href="'+item.itemUrl+'" class="lists__item__link" target="_blank">'+
-                              '<img src="'+item.largeImageUrl+'" class="lists__item__img" alt="">'+
-                              '<p class="lists__item__detail">作品名：'+item.title+'</p>'+
-                              '<p class="lists__item__detail">作者：'+item.author+'</p>'+
-                              '<p class="lists__item__detail">出版社：'+item.publisherName+'</p>'+
-                            '</a>'+
-                          '</div>'+
-                        '</li>';
-              lists += li
-            })
-            $('.lists').append(lists);
-          }
-          reset() {
-            $('.lists').empty();
-          }
-        }
-
         class Search {
           constructor() {
             this.keyword = '';
@@ -132,7 +107,29 @@
             })
           }
         }
-
+        class Lists {
+          add(data) {
+            var lists = '';
+            $(data.Items).each(function(i, book) {
+              var item = book.Item
+              var li = '<li class="lists__item">'+
+                          '<div class="lists__item__inner">'+
+                            '<a href="'+item.itemUrl+'" class="lists__item__link" target="_blank">'+
+                              '<img src="'+item.largeImageUrl+'" class="lists__item__img" alt="">'+
+                              '<p class="lists__item__detail">作品名：'+item.title+'</p>'+
+                              '<p class="lists__item__detail">作者：'+item.author+'</p>'+
+                              '<p class="lists__item__detail">出版社：'+item.publisherName+'</p>'+
+                            '</a>'+
+                          '</div>'+
+                        '</li>';
+              lists += li
+            })
+            $('.lists').append(lists);
+          }
+          reset() {
+            $('.lists').empty();
+          }
+        }
         class Pager {
           show(maxPage) {
             var pagerElement = $('<div class="pager" data-js="pager">'+
@@ -147,7 +144,8 @@
             pagerElement.find('a').on('click', function(event) {
               event.preventDefault();
             })
-            $('.container').append(pagerElement);
+            //$('.container').append -> afterに修正
+            $('.lists').after(pagerElement);
             this.currentPage = 1;
             this.maxPage = maxPage;
             this.buttonReload();
@@ -172,12 +170,11 @@
             $('.counter-all').text(this.maxPage);
           }
           reset() {
-            $('.pager').remove();
+            $('[data-js="pager"]').remove();
             this.currentPage = 1;
             this.maxPage = 1;
           }
         }
-
         class Error {
           showMessage(errorStatus) {
             var text = '';
@@ -198,25 +195,24 @@
                 text = '検索結果が見つかりませんでした。<br>別のキーワードで検索して下さい。';
                 break;
             }
-            var message = $('<p></p>').append(text)
+            var message = $('<p></p>').addClass('error-message').append(text);
             $('.message').append(message);
           }
           reset() {
             $('.message').empty();
           }
         }
-
         var errorCode = new Error();
         var lists = new Lists();
         var search = new Search();
         var pager = new Pager();
-
         //検索ボタンが押された時の処理
         $('.search__btn').click(function() {
           lists.reset();
           pager.reset();
           errorCode.reset();
-          search.keyword = $('.search__text__input').val();
+          //クラス指定から$('[data-js="search-word"]')に修正
+          search.keyword = $('[data-js="search-word"]').val();
           search.start(pager.currentPage).done(function(result) {
             if (result.count === 0) {
               errorCode.showMessage();
@@ -230,39 +226,42 @@
         })
         //次へボタンが押された時の処理
         $(document).on('click', '.btn-wrapper a[data-js="page-next"]', function() {
-          if (pager.currentPage != pager.maxPage) {
-            lists.reset();
-            pager.currentPage++;
-            search.start(pager.currentPage).done(function(result) {
-              if (result.count === 0) {
-                error.showMessage()
-                return false;
-              }
-              lists.add(result);
-              pager.pageReload();
-              pager.buttonReload();
-            }).fail(function(errorType) {
-              error.showMessage(errorType.status);
-            })
+          //条件式(!=)->(===)に変更
+          if (pager.currentPage === pager.maxPage) {
+            return false;
           }
+          lists.reset();
+          pager.currentPage++;
+          search.start(pager.currentPage).done(function(result) {
+            if (result.count === 0) {
+              error.showMessage()
+              return false;
+            }
+            lists.add(result);
+            pager.pageReload();
+            pager.buttonReload();
+          }).fail(function(errorType) {
+            error.showMessage(errorType.status);
+          })
         })
         //前へボタンが押された時の処理
         $(document).on('click', '.btn-wrapper a[data-js="page-prev"]', function() {
-          if (pager.currentPage != 1) {
-            lists.reset();
-            pager.currentPage--;
-            search.start(pager.currentPage).done(function(result) {
-              if (result.count === 0) {
-                error.showMessage();
-                return false;
-              }
-              lists.add(result);
-              pager.pageReload();
-              pager.buttonReload();
-            }).fail(function(errorType) {
-              error.showMessage(errorType.status);
-            })
+          if (pager.currentPage === 1) {
+            return false;
           }
+          lists.reset();
+          pager.currentPage--;
+          search.start(pager.currentPage).done(function(result) {
+            if (result.count === 0) {
+              error.showMessage();
+              return false;
+            }
+            lists.add(result);
+            pager.pageReload();
+            pager.buttonReload();
+          }).fail(function(errorType) {
+            error.showMessage(errorType.status);
+          })
         })
       })
     </script>
