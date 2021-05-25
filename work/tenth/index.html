@@ -64,7 +64,7 @@
       //    <a href="" class="lists__item__link" target="_blank">
       //      <img src="" class="lists__item__img" alt="">
       //      <p class="lists__item__detail">作品名：</p>
-      //      <p class="lists__item__detail">作者　：</p>
+      //      <p class="lists__item__detail">作者：</p>
       //      <p class="lists__item__detail">出版社：</p>
       //    </a>
       //  </div>
@@ -87,6 +87,184 @@
       //     <a class="btn-item" data-js="page-next" href="">次へ</a>
       //   </div>
       // </div>
+      $(function() {
+        class Lists {
+          add(data) {
+            var lists = '';
+            $(data.Items).each(function(i, book) {
+              console.log(data.Items);
+              var item = book.Item
+              var li = '<li class="lists__item">'+
+                          '<div class="lists__item__inner">'+
+                            '<a href="'+item.itemUrl+'" class="lists__item__link" target="_blank">'+
+                              '<img src="'+item.largeImageUrl+'" class="lists__item__img" alt="">'+
+                              '<p class="lists__item__detail">作品名：'+item.title+'</p>'+
+                              '<p class="lists__item__detail">作者：'+item.author+'</p>'+
+                              '<p class="lists__item__detail">出版社：'+item.publisherName+'</p>'+
+                            '</a>'+
+                          '</div>'+
+                        '</li>';
+              lists += li
+            })
+            $('.lists').append(lists);
+          }
+          reset() {
+            $('.lists').empty();
+          }
+        }
+
+        class Search {
+          constructor() {
+            this.keyword = '';
+          }
+          start(page) {
+            return $.ajax({
+              url: 'https://app.rakuten.co.jp/services/api/BooksTotal/Search/20130522',
+              type: 'GET',
+              datatype: 'json',
+              data: {
+                applicationId: appId,
+                booksGenreId: '001',
+                keyword: this.keyword,
+                page: page,
+                hits: 20
+              }
+            })
+          }
+        }
+
+        class Pager {
+          show(maxPage) {
+            var pagerElement = $('<div class="pager" data-js="pager">'+
+                                    '<div class="counter">'+
+                                      '<span class="counter-current"></span>/<span class="counter-all"></span>'+
+                                    '</div>'+
+                                    '<div class="btn-wrapper">'+
+                                      '<a class="btn-item" data-js="page-prev" href="">前へ</a>'+
+                                      '<a class="btn-item" data-js="page-next" href="">次へ</a>'+
+                                    '</div>'+
+                                  '</div>');
+            pagerElement.find('a').on('click', function(event) {
+              event.preventDefault();
+            })
+            $('.container').append(pagerElement);
+            this.currentPage = 1;
+            this.maxPage = maxPage;
+            this.buttonReload();
+            this.pageReload();
+          }
+          buttonReload() {
+            var prevButton = $('.btn-wrapper').children('[data-js="page-prev"]');
+            var nextButton = $('.btn-wrapper').children('[data-js="page-next"]');
+            if (this.currentPage === 1) {
+              prevButton.addClass('disabled');
+            } else {
+              prevButton.removeClass('disabled');
+            }
+            if (this.currentPage === this.maxPage) {
+              nextButton.addClass('disabled');
+            } else {
+              nextButton.removeClass('disabled');
+            }
+          }
+          pageReload() {
+            $('.counter-current').text(this.currentPage);
+            $('.counter-all').text(this.maxPage);
+          }
+          reset() {
+            $('.pager').remove();
+            this.currentPage = 1;
+            this.maxPage = 1;
+          }
+        }
+
+        class Error {
+          showMessage(errorStatus) {
+            var text = '';
+            switch (errorStatus) {
+              case 0:
+                text = '通信に失敗しました。インターネットの接続をご確認ください。';
+                break;
+              case 400:
+                text = '検索文字が入力されていません。';
+                break
+              case 429:
+                text = 'リクエスト過多です。しばらく時間を置いてからお試しください。';
+                break
+              case 500:
+                text = '楽天ウェブサービス内でシステムエラーが発生しています。長時間続くようであれば、楽天に直接ごお問い合わせください。';
+                break
+              default:
+                text = '検索結果が見つかりませんでした。<br>別のキーワードで検索して下さい。';
+                break;
+            }
+            var message = $('<p></p>').append(text)
+            $('.message').append(message);
+          }
+          reset() {
+            $('.message').empty();
+          }
+        }
+
+        var errorCode = new Error();
+        var lists = new Lists();
+        var search = new Search();
+        var pager = new Pager();
+
+        //検索ボタンが押された時の処理
+        $('.search__btn').click(function() {
+          lists.reset();
+          pager.reset();
+          errorCode.reset();
+          search.keyword = $('.search__text__input').val();
+          search.start(pager.currentPage).done(function(result) {
+            if (result.count === 0) {
+              errorCode.showMessage();
+              return false;
+            }
+            lists.add(result);
+            pager.show(result.pageCount);
+          }).fail(function(errorType) {
+            errorCode.showMessage(errorType.status);
+          })
+        })
+        //次へボタンが押された時の処理
+        $(document).on('click', '.btn-wrapper a[data-js="page-next"]', function() {
+          if (pager.currentPage != pager.maxPage) {
+            lists.reset();
+            pager.currentPage++;
+            search.start(pager.currentPage).done(function(result) {
+              if (result.count === 0) {
+                error.showMessage()
+                return false;
+              }
+              lists.add(result);
+              pager.pageReload();
+              pager.buttonReload();
+            }).fail(function(errorType) {
+              error.showMessage(errorType.status);
+            })
+          }
+        })
+        //前へボタンが押された時の処理
+        $(document).on('click', '.btn-wrapper a[data-js="page-prev"]', function() {
+          if (pager.currentPage != 1) {
+            lists.reset();
+            pager.currentPage--;
+            search.start(pager.currentPage).done(function(result) {
+              if (result.count === 0) {
+                error.showMessage();
+                return false;
+              }
+              lists.add(result);
+              pager.pageReload();
+              pager.buttonReload();
+            }).fail(function(errorType) {
+              error.showMessage(errorType.status);
+            })
+          }
+        })
+      })
     </script>
   </body>
 </html>
